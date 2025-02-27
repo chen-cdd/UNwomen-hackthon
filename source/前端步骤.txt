@@ -1,0 +1,9 @@
+前端项目初始化：
+npm create vue@latest
+
+npm installed
+npm run format
+npm run dev
+
+安装必要的包：
+npm install element-plus dayjs
