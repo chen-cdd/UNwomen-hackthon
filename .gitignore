@@ -34,4 +34,4 @@ Thumbs.db
 
 # Cache
 .cache/
-.temp/
+.temp/"source/*.mp4" 
