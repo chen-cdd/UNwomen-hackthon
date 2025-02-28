@@ -2,11 +2,36 @@
 from typing import Dict, List
 import json
 from fastapi import HTTPException
-
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from .models import User, Doctor, Appointment, ChatHistory
 from datetime import datetime, timedelta
 from .utils import get_weekday, call_dify_api  # 导入工具函数
+
+
+
+# 密码加密器
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# 用户注册
+def create_user(db: Session, email: str, fullname: str, password: str):
+    hashed_password = pwd_context.hash(password)
+    db_user = User(email=email, fullname=fullname, password_hash=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+# 获取用户
+def get_user_by_email(db: Session, email: str):
+    return db.query(User).filter(User.email == email).first()
+
+
+# 验证密码
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 # 获取用户的聊天历史

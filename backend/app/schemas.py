@@ -2,6 +2,18 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
 
+
+# 登录请求体
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+# 用户注册请求体
+class RegisterRequest(BaseModel):
+    email: str
+    fullname: str  # 添加 fullname 字段
+    password: str
+
 class ChatHistoryResponse(BaseModel):
     chat_id: int
     user_id: int
