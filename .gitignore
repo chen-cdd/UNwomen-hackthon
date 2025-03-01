@@ -11,6 +11,7 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
+venv
 
 # Logs
 logs
