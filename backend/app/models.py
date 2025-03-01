@@ -27,6 +27,7 @@ class ChatHistory(Base):
 class User(Base):
     __tablename__ = "users"
 
+    fullname = Column(String)  # 添加 fullname 字段
     user_id = Column(Integer, primary_key=True, index=True)
     email = Column(String(100), unique=True, index=True)
     password_hash = Column(String(255))

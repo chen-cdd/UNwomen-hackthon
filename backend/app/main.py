@@ -7,7 +7,7 @@ from typing import List, Dict
 
 from .crud import get_chat_history, get_doctors, get_user_appointments, get_doctor_availability, create_appointment, store_user_message, store_bot_message
 from .models import User, Doctor, Appointment, ChatHistory
-from .schemas import ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate
+from .schemas import ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate, LoginRequest, RegisterRequest
 from .database import SessionLocal
 from .utils import call_dify_api  # 导入工具函数
 from fastapi.middleware.cors import CORSMiddleware  # 添加这行导入
@@ -32,6 +32,35 @@ def get_db():
     finally:
         db.close()
 
+
+# 登录接口
+@app.post("/api/auth/login", response_model=dict)
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    user = get_user_by_email(db, request.email)
+    if not user or not verify_password(request.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="邮箱或密码错误")
+
+    return {
+        "success": True,
+        "user": {"user_id": user.user_id, "email": user.email},
+        "message": "登录成功"
+    }
+
+
+# 注册接口
+@app.post("/api/auth/register", response_model=dict)
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    # 检查邮箱是否已注册
+    user = get_user_by_email(db, request.email)
+    if user:
+        raise HTTPException(status_code=400, detail="该邮箱已被注册")
+
+    new_user = create_user(db, request.email, request.fullname, request.password)
+    return {
+        "success": True,
+        "user": {"user_id": new_user.user_id, "email": new_user.email, "fullname": new_user.fullname},
+        "message": "注册成功"
+    }
 
 # 1. 获取用户的聊天历史
 @app.get("/api/chat/history", response_model=ChatHistoryDataResponse)
