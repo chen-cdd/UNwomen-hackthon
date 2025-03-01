@@ -16,6 +16,8 @@
               <p class="cycle-info">Cycle Length: {{ nextAppointment.cycleLength }}</p>
             </div>
             <button class="reschedule-btn">Adjust Prediction</button>
+            <!-- 新增请经期假的按钮 -->
+            <button class="leave-btn" @click="requestLeave">Request Menstrual Leave</button>
           </div>
         </div>
   
@@ -93,6 +95,11 @@
           }
         ]
       }
+    },
+    methods: {
+      requestLeave() {
+        alert('Menstrual leave requested successfully!');
+      },
     }
   }
   </script>
@@ -151,7 +158,22 @@
     transform: translateY(-5px);
     box-shadow: 0 15px 40px rgba(213, 63, 140, 0.15);
   }
-  
+  .leave-btn {
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #ff6b6b, #d53f8c);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    margin-left: 1rem;
+  }
+  .leave-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
   .date-box {
     background: linear-gradient(135deg, #d53f8c, #805ad5);
     padding: 1.5rem;
@@ -161,36 +183,30 @@
     color: white;
     box-shadow: 0 5px 15px rgba(213, 63, 140, 0.2);
   }
-  
   .month {
     display: block;
     font-size: 1.2rem;
   }
-  
   .day {
     display: block;
     font-size: 2.5rem;
     font-weight: bold;
   }
-  
   .appointment-details {
     margin-left: 2rem;
     flex-grow: 1;
   }
-  
   .appointment-details h3 {
     color: #2c3e50;
     margin-bottom: 1rem;
     font-size: 1.4rem;
   }
-  
   .type-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-top: 1rem;
   }
-  
   .type-card {
     background: white;
     border-radius: 20px;
@@ -201,12 +217,10 @@
     gap: 1.5rem;
     border: 1px solid rgba(213, 63, 140, 0.1);
   }
-  
   .type-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 15px 40px rgba(213, 63, 140, 0.15);
   }
-  
   .type-icon {
     font-size: 2.5rem;
     background: linear-gradient(135deg, #fff0f6, #faf5ff);
@@ -218,23 +232,19 @@
     border-radius: 50%;
     box-shadow: 0 5px 15px rgba(213, 63, 140, 0.1);
   }
-  
   .type-info {
     flex-grow: 1;
   }
-  
   .type-info h3 {
     color: #2c3e50;
     margin-bottom: 0.8rem;
     font-size: 1.3rem;
   }
-  
   .reminder-list {
     display: grid;
     gap: 1rem;
     margin-top: 1rem;
   }
-  
   .reminder-item {
     background: white;
     border-radius: 15px;
@@ -245,12 +255,10 @@
     transition: all 0.3s ease;
     border: 1px solid rgba(213, 63, 140, 0.1);
   }
-  
   .reminder-item:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(213, 63, 140, 0.15);
   }
-  
   .reminder-icon {
     font-size: 2rem;
     background: linear-gradient(135deg, #fff0f6, #faf5ff);
@@ -261,7 +269,6 @@
     justify-content: center;
     border-radius: 50%;
   }
-  
   .schedule-btn, .reschedule-btn {
     padding: 1rem 2rem;
     background: linear-gradient(135deg, #d53f8c, #805ad5);
@@ -273,12 +280,10 @@
     transition: all 0.3s ease;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   }
-  
   .schedule-btn:hover, .reschedule-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   }
-  
   h2 {
     font-size: 1.8rem;
     color: #2d3748;
@@ -286,7 +291,6 @@
     position: relative;
     padding-left: 1rem;
   }
-  
   h2::before {
     content: '';
     position: absolute;
@@ -298,36 +302,29 @@
     background: linear-gradient(to bottom, #d53f8c, #805ad5);
     border-radius: 2px;
   }
-  
   @media (max-width: 768px) {
     .gradient-bg {
       padding: 1rem;
     }
-  
-    .page-title {
+  .page-title {
       font-size: 2rem;
     }
-  
-    .appointment-card {
+  .appointment-card {
       flex-direction: column;
       text-align: center;
     }
-  
-    .appointment-details {
+  .appointment-details {
       margin: 1.5rem 0;
     }
-  
-    .type-card {
+  .type-card {
       flex-direction: column;
       align-items: center;
       text-align: center;
     }
-  
-    .type-cards {
+  .type-cards {
       grid-template-columns: 1fr;
     }
-  
-    .reminder-item {
+  .reminder-item {
       flex-direction: column;
       text-align: center;
       padding: 1.5rem;

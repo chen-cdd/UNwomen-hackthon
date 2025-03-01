@@ -44,7 +44,7 @@ export default {
     return {
       chatHistory: [],
       userMessage: '',
-      userId: 1,
+      userId: localStorage.getItem('userId'), // 从 localStorage 获取 user_id
       conversationId: null,
       md: new MarkdownIt({
         html: true,
@@ -56,8 +56,8 @@ export default {
 
   async created() {
     await this.loadChatHistory();
-    },
-    
+  },
+  
   methods: {
     async loadChatHistory() {
       try {

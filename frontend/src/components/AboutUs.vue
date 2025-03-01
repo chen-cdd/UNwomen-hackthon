@@ -109,12 +109,50 @@
         <span>GDPR & HIPAA Compliant</span>
         <span class="divider">|</span>
         <span>Trusted by 500+ Employers</span>
+        <span class="divider">|</span>
+        <a href="/privacy-policy" class="privacy-policy-link">Privacy Policy</a>
       </div>
     </section>
   </div>
 </template>
 
 <style scoped>
+
+
+/* Trust Signals */
+.trust-signals {
+  background: #f7fafc;
+  padding: 2rem;
+  border-radius: 20px;
+  margin: 6rem 0;
+  text-align: center;
+}
+
+.compliance {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.divider {
+  color: #cbd5e0;
+}
+
+/* 添加隐私政策链接样式 */
+.privacy-policy-link {
+  color: #4a5568;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.privacy-policy-link:hover {
+  color: #d53f8c;
+  text-decoration: underline;
+}
+
 .gradient-bg {
   background: #ffffff;
   min-height: 100vh;

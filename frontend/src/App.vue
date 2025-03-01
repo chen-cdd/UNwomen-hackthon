@@ -2,7 +2,7 @@
   <div id="app">
     <nav>
       <div class="nav-left">
-        <span class="brand-name">Sanicle.cloud</span>
+        <span class="brand-name">Lunova.cloud</span>
       </div>
       <div class="nav-center">
         <router-link to="/" class="nav-link">Solution</router-link>
@@ -10,7 +10,8 @@
         <router-link to="/personalized-cycle-tracking" class="nav-link">Platform</router-link>
         <router-link to="/pricing" class="nav-link">Pricing</router-link>
         <router-link to="/about-us" class="nav-link">About Us</router-link>
-        <router-link to="/auth" class="nav-link login">Login</router-link>
+        <router-link v-if="!isLoggedIn" to="/auth" class="nav-link login">Login</router-link>
+        <a v-else @click="logout" class="nav-link login">Logout</a>
       </div>
       <div class="nav-right">
         <div class="language-selector">
@@ -35,12 +36,30 @@
 export default {
   data() {
     return {
-      selectedLanguage: 'en'
+      selectedLanguage: 'en',
+      isLoggedIn: false // 添加登录状态变量
+    }
+  },
+  mounted() {
+    // 检查用户是否已登录
+    this.isLoggedIn = !!localStorage.getItem('user');
+  },
+  methods: {
+    logout() {
+      // 弹出确认对话框
+      if (confirm('Are you sure you want to quit?')) {
+        // 清除用户信息并更新登录状态
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('username');
+        this.isLoggedIn = false;
+        this.$router.push('/'); // 可选：重定向到首页
+        location.reload(); // 刷新页面
+      }
     }
   },
   watch: {
     selectedLanguage(newLang) {
-      // Language switch logic can be added here
       console.log('Language changed to:', newLang);
     }
   }

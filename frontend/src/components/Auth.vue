@@ -16,8 +16,8 @@
             <label for="name">Full Name</label>
             <input 
               type="text" 
-              id="name" 
-              v-model="user.name" 
+              id="fullname" 
+              v-model="user.fullname" 
               placeholder="Enter your full name"
             />
           </div>
@@ -76,7 +76,7 @@
       return {
         isLogin: true,
         user: {
-          name: '',
+          fullname: '',
           email: '',
           password: '',
           confirmPassword: ''
@@ -89,7 +89,7 @@
         this.isLogin = !this.isLogin;
         this.errorMessage = '';
         this.user = {
-          name: '',
+          fullname: '',
           email: '',
           password: '',
           confirmPassword: ''
@@ -105,7 +105,7 @@
             return;
           }
         } else {
-          if (!this.user.name || !this.user.email || !this.user.password || !this.user.confirmPassword) {
+          if (!this.user.fullname || !this.user.email || !this.user.password || !this.user.confirmPassword) {
             this.errorMessage = '请填写所有必填字段';
             return;
           }
@@ -126,20 +126,29 @@
               password: this.user.password
             });
           } else {
-            // 注册请求 - 根据users表结构，只需要email和password
+            // 注册请求 
             response = await axios.post('http://localhost:8000/api/auth/register', {
+              fullname: this.user.fullname,  // 确保发送 fullname 字段
               email: this.user.email,
               password: this.user.password
             });
           }
           
           if (response.data.success) {
-            // 只存储用户信息，不使用token
-            localStorage.setItem('user', JSON.stringify(response.data.user));
-            localStorage.setItem('userId', response.data.user.user_id);
-            
-            // 重定向到首页或仪表板
-            this.$router.push('/dashboard');
+            if (this.isLogin) {
+              // 登录成功后的逻辑
+              localStorage.setItem('user', JSON.stringify(response.data.user));
+              localStorage.setItem('username', response.data.user.fullname);
+              localStorage.setItem('userId', response.data.user.user_id);
+              this.$router.push('/personalized-cycle-tracking').then(() => {
+                window.location.reload(); // 刷新页面
+              });
+            } else {
+              // 注册成功后跳转到登录页面
+              this.$router.push('/auth').then(() => {
+                window.location.reload(); // 刷新页面
+              });
+            }
           } else {
             this.errorMessage = response.data.message || '操作失败，请重试';
           }

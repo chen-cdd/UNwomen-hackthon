@@ -11,8 +11,9 @@ import NextInspection from './components/NextInspection.vue'
 import SanitaryProducts from './components/SanitaryProducts.vue'
 import DietAdvice from './components/Diet.vue'
 import AuthLogin from './components/Auth.vue'
-
+import PrivacyPolicy from './components/PrivacyPolicy.vue'
 import 'vue-cal/dist/vuecal.css'
+
 
 const routes = [
   { path: '/', component: PersonalizedCycleTracking },
@@ -25,7 +26,8 @@ const routes = [
   { path: '/next-inspection', component: NextInspection },
   { path: '/sanitary-products', component: SanitaryProducts },
   { path: '/diet', component: DietAdvice },
-  { path: '/auth', component: AuthLogin }
+  { path: '/auth', component: AuthLogin },
+  { path: '/privacy-policy', component: PrivacyPolicy },
 ]
 
 const router = createRouter({

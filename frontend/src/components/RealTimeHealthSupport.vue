@@ -14,9 +14,16 @@
             </p>
             <p v-else>Schedule your first appointment below</p>
           </div>
+
+          <div v-if="hasAppointment" class="appointment-actions">
+            <button class="action-button cancel" @click="cancelAppointment(nextAppointment.id)">Cancel</button>
+            <button class="action-button modify" @click="modifyAppointment(nextAppointment.id)">Modify</button>
+          </div>
+
         </div>
       </div>
     </div>
+
     
     <div class="dashboard">
       <div class="left-panel">
@@ -142,7 +149,7 @@ export default {
       },
       doctors: [],
       availableTimeSlots: [],
-      userId: 1, // 应该从用户登录信息中获取
+      userId:localStorage.getItem('userId'),// 应该从用户登录信息中获取
       userAppointments: []
     };
   },
@@ -150,7 +157,46 @@ export default {
     await this.loadDoctors();
     await this.checkExistingAppointments();
   },
+
   methods: {
+
+    async cancelAppointment(appointmentId) {
+    // 弹出确认提示框
+    const confirmation = window.confirm('Are you sure you want to cancel this appointment?');
+    if (!confirmation) return; // 如果用户取消，则不执行后续操作
+
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}`);
+      if (response.data.success) {
+        // 更新预约列表
+        await this.checkExistingAppointments();
+        alert('Appointment canceled successfully!');
+      }
+    } catch (error) {
+      console.error('Error canceling appointment:', error);
+      alert('Failed to cancel the appointment. Please try again later.');
+    }
+  },
+    
+    async modifyAppointment(appointmentId) {
+      // 弹出确认提示框
+      const confirmation = window.confirm('Are you sure you want to modify this appointment?');
+      if (!confirmation) return; // 如果用户取消，则不执行后续操作
+      try {
+        const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}`, {
+          notes: this.notes
+        });
+        if (response.data.success) {
+          // 更新预约列表
+          await this.checkExistingAppointments();
+          alert('Appointment modified successfully!');
+        }
+      } catch (error) {
+        console.error('Error modifying appointment:', error);
+        alert('Failed to modify the appointment. Please try again later.');
+      }
+    },
+
     async loadDoctors() {
       try {
         const response = await axios.get(`${API_BASE_URL}/doctors`);
@@ -334,6 +380,37 @@ export default {
 </script>
 
 <style scoped>
+
+.appointment-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.action-button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.action-button.cancel {
+  background: linear-gradient(135deg, #ff6b6b, #d53f8c);
+}
+
+.action-button.modify {
+  background: linear-gradient(135deg, #3182ce, #805ad5);
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+
 .gradient-bg {
   background: #ffffff;
   min-height: 100vh;

@@ -103,10 +103,10 @@ export default {
   },
   data() {
     return {
-      username: 'Vivian',
+      username: localStorage.getItem('username') || 'Guest', // 从本地存储获取用户名
       currentMood: localStorage.getItem('currentMood') || 'Normal',
       upcomingAppointment: {
-        date: 'November 1st, 2024',
+        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), // 使用当前日期
       },
       selectedDate: new Date(),
       events: [
