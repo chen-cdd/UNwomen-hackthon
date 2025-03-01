@@ -7,11 +7,7 @@ from typing import List, Dict
 
 from .crud import get_chat_history, get_doctors, get_user_appointments, get_doctor_availability, create_appointment, store_user_message, store_bot_message, get_user_by_email, verify_password, create_user
 from .models import User, Doctor, Appointment, ChatHistory
-<<<<<<< HEAD
-from .schemas import ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate, LoginRequest, RegisterRequest
-=======
 from .schemas import  LoginRequest, RegisterRequest, ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate
->>>>>>> d6a989f16b6942fc5b2ba734713a21b751d81a19
 from .database import SessionLocal
 from .utils import call_dify_api  # 导入工具函数
 from fastapi.middleware.cors import CORSMiddleware  # 添加这行导入
@@ -66,10 +62,6 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
         "message": "注册成功"
     }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> d6a989f16b6942fc5b2ba734713a21b751d81a19
 # 1. 获取用户的聊天历史
 @app.get("/api/chat/history", response_model=ChatHistoryDataResponse)
 def get_chat_history_endpoint(user_id: int, db: Session = Depends(get_db)):
