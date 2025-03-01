@@ -42,7 +42,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
     return {
         "success": True,
-        "user": {"user_id": user.user_id, "email": user.email},
+        "user": {"user_id": user.user_id, "email": user.email, "fullname": user.fullname},
         "message": "登录成功"
     }
 
