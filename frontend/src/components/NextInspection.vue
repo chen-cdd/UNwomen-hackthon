@@ -3,6 +3,20 @@
       <h1 class="page-title">Menstrual Cycle Tracker</h1>
       
       <div class="calendar-section">
+
+        <!-- 新增用户输入区域 -->
+      <div class="past-periods-input">
+        <h2>Input Past Periods to Predict the Next Menstrual Period</h2>
+        <div v-for="(period, index) in pastPeriods" :key="index" class="period-entry">
+          <label>Start Date:</label>
+          <input type="date" v-model="period.start" />
+          <label>End Date:</label>
+          <input type="date" v-model="period.end" />
+        </div>
+        <button class="add-btn" @click="addPeriod">Add Another Period</button>
+        <button class="predict-btn" @click="predictNextPeriod">Predict Next Period</button>
+      </div>
+
         <div class="next-appointment">
           <h2>Next Menstrual Cycle</h2>
           <div class="appointment-card" v-if="nextAppointment">
@@ -15,7 +29,8 @@
               <p>Expected Duration: {{ nextAppointment.duration }}</p>
               <p class="cycle-info">Cycle Length: {{ nextAppointment.cycleLength }}</p>
             </div>
-            <button class="reschedule-btn">Adjust Prediction</button>
+            
+           
             <!-- 新增请经期假的按钮 -->
             <button class="leave-btn" @click="requestLeave">Request Menstrual Leave</button>
           </div>
@@ -54,57 +69,175 @@
     name: 'NextInspection',
     data() {
       return {
-        nextAppointment: {
-          month: 'March',
-          day: '15',
-          phase: 'Menstrual Phase',
-          duration: '5-7 days',
-          cycleLength: '28 days'
+        nextAppointment: null, // 初始化为null，直到预测生成结果
+        pastPeriods: [{ start: '', end: '' }], // 存储用户输入的经期数据
+
+        showLeaveForm: false, // 控制请假表单的显示
+        leaveRequest: {
+          startDate: '',
+          duration: '1',
+          reason: ''
         },
+        leaveStatus: null, // 存储请假状态
+
         periodCareTypes: [
-          {
-            id: 1,
-            icon: '🌸',
-            name: 'Period Care',
-            description: 'Stay warm and avoid intense exercise',
-            recommendedTime: 'Throughout period'
-          },
-          {
-            id: 2,
-            icon: '🛁',
-            name: 'Personal Hygiene',
-            description: 'Change sanitary products daily, maintain cleanliness',
-            recommendedTime: 'Every 4-6 hours'
-          }
-        ],
-        periodReminders: [
-          {
-            id: 1,
-            icon: '📅',
-            message: '7 days until next period, remember to prepare sanitary products'
-          },
-          {
-            id: 2,
-            icon: '💊',
-            message: 'Prepare pain relief medication if needed'
-          },
-          {
-            id: 3,
-            icon: '🌡️',
-            message: 'Stay warm during period, use a hot water bottle for comfort'
-          }
-        ]
+        {
+          id: 1,
+          icon: '🌸',
+          name: 'Period Care',
+          description: 'Stay warm and avoid intense exercise',
+          recommendedTime: 'Throughout period'
+        },
+        {
+          id: 2,
+          icon: '🛁',
+          name: 'Personal Hygiene',
+          description: 'Change sanitary products daily, maintain cleanliness',
+          recommendedTime: 'Every 4-6 hours'
+        }
+      ],
+      periodReminders: [
+        {
+          id: 1,
+          icon: '📅',
+          message: '7 days until next period, remember to prepare sanitary products'
+        },
+        {
+          id: 2,
+          icon: '💊',
+          message: 'Prepare pain relief medication if needed'
+        },
+        {
+          id: 3,
+          icon: '🌡️',
+          message: 'Stay warm during period, use a hot water bottle for comfort'
+        }
+      ]
       }
     },
+
     methods: {
-      requestLeave() {
-        alert('Menstrual leave requested successfully!');
+
+      addPeriod() {
+      this.pastPeriods.push({ start: '', end: '' });
+    },
+
+    async predictNextPeriod() {
+      try {
+        const response = await fetch('/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pastPeriods: this.pastPeriods })
+        });
+        const data = await response.json();
+        this.nextAppointment = {
+          month: new Date(data.nextStart).toLocaleString('default', { month: 'long' }),
+          day: new Date(data.nextStart).getDate(),
+          phase: 'Menstrual Phase',
+          duration: data.duration,
+          cycleLength: data.cycleLength
+        };
+      } catch (error) {
+        console.error('Prediction error:', error);
+        alert('Failed to predict next period. Please try again.');
+      }
+    },
+
+    async requestLeave() {
+        if (!this.leaveRequest.startDate) {
+          alert('请选择开始日期');
+          return;
+        }
+        
+        try {
+          // 这里可以添加与后端API的交互
+          const response = await fetch('/api/request-leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.leaveRequest)
+          });
+          
+          if (!response.ok) {
+            throw new Error('请假申请失败');
+          }
+
+          const responseData = await response.json();
+          
+          // 更新请假状态
+          this.leaveStatus = {
+            approved: responseData.approved,
+            message: responseData.message || '您的经期假申请已提交成功，等待审批。'
+          };
+          
+          // 关闭表单并显示成功消息
+          this.showLeaveForm = false;
+          alert(this.leaveStatus.message);
+          
+          // 重置表单
+          this.leaveRequest = {
+            startDate: '',
+            duration: '1',
+            reason: ''
+          };
+        } catch (error) {
+          console.error('Leave request error:', error);
+          alert('提交请假申请失败，请稍后重试。');
+        }
       },
     }
-  }
+  
+};
+
   </script>
   
   <style scoped>
+
+.past-periods-input {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 30px rgba(213, 63, 140, 0.1);
+  border: 1px solid rgba(213, 63, 140, 0.1);
+}
+
+.period-entry {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.period-entry label {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.period-entry input {
+  padding: 0.5rem;
+  border: 1px solid #d53f8c;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.add-btn, .predict-btn {
+  padding: 1rem 2rem;
+  margin-right: 1rem;
+  background: linear-gradient(135deg, #d53f8c, #805ad5);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.add-btn:hover, .predict-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
   .gradient-bg {
     background: #ffffff;  /* 修改为纯白色背景 */
   min-height: 100vh;

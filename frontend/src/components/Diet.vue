@@ -1,7 +1,7 @@
 <template>
     <div class="diet-container gradient-bg">
       <h1 class="page-title">Healthy Diet Guide</h1>
-      
+
       <div class="diet-phases">
         <div class="phase-card" v-for="phase in dietPhases" :key="phase.id">
           <div class="phase-header">
@@ -29,6 +29,51 @@
         </div>
       </div>
   
+           <!-- 用户输入区域 -->
+     <div class="personalized-diet-section">
+        <div class="diet-image-container">
+          <img src="../assets/diet.jpeg" alt="Healthy Diet" class="diet-image" />
+        </div>
+        <div class="personalized-diet-input">
+          <h2>Personalized Nutrition Plan</h2>
+          <p class="input-description">Get a customized 5-day meal plan tailored to your menstrual cycle and health needs</p>
+          <form @submit.prevent="getDietPlan">
+            <div class="form-group">
+              <label for="healthStatus">Health Conditions:</label>
+              <input id="healthStatus" v-model="userInput.healthStatus" placeholder="e.g., PCOS, endometriosis" />
+            </div>
+            <div class="form-group">
+              <label for="dietPreferences">Dietary Preferences:</label>
+              <input id="dietPreferences" v-model="userInput.dietPreferences" placeholder="e.g., vegetarian, low-sugar" />
+            </div>
+            <div class="form-group">
+              <label for="restrictions">Food Restrictions:</label>
+              <input id="restrictions" v-model="userInput.restrictions" placeholder="e.g., gluten, dairy" />
+            </div>
+            <button type="submit" class="submit-btn">
+              <span class="btn-icon">🍽️</span>
+              Get My 3-Day Meal Plan
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 展示饮食方案 -->
+      <div class="diet-plan-section" v-if="dietPlan">
+        <h2 class="plan-title">Your 5-Day Cycle-Synced Meal Plan</h2>
+        <div class="diet-plan-container">
+          <div v-for="(day, index) in dietPlan.days" :key="index" class="day-plan">
+            <div class="day-header">
+              <span class="day-number">{{ index + 1 }}</span>
+              <h3>Day {{ index + 1 }}</h3>
+            </div>
+            <div class="day-content">
+              <p>{{ day.meals }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="nutrition-tips">
         <h2>Nutrition Tips</h2>
         <div class="tips-grid">
@@ -47,6 +92,13 @@
     name: 'DietAdvice',
     data() {
       return {
+        userInput: {
+        healthStatus: '',
+        dietPreferences: '',
+        restrictions: ''
+      },
+      dietPlan: null,
+
         dietPhases: [
           {
             id: 1,
@@ -119,11 +171,276 @@
           }
         ]
       }
+    },
+
+    methods: {
+      async getDietPlan() {
+        this.isLoading = true;
+        this.errorMessage = '';
+        
+        try {
+          // 尝试从API获取数据
+          const response = await fetch('/api/get-diet-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.userInput)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          this.dietPlan = data;
+          
+          // 滚动到饮食方案部分
+          this.$nextTick(() => {
+            document.querySelector('.diet-plan-section')?.scrollIntoView({ behavior: 'smooth' });
+          });
+        } catch (error) {
+          console.error('Failed to get diet plan:', error);
+          
+          // 如果API调用失败，使用模拟数据
+          this.useMockData();
+          this.errorMessage = 'Using sample data as API is unavailable. In production, this would connect to our backend service.';
+        } finally {
+          this.isLoading = false;
+        }
+      },
+      
+      // 使用模拟数据方法
+      useMockData() {
+        // 基于用户输入创建个性化的模拟数据
+        const healthFocus = this.userInput.healthStatus ? 
+          `considering your ${this.userInput.healthStatus}` : 
+          'for optimal hormonal balance';
+          
+        const dietType = this.userInput.dietPreferences ? 
+          `${this.userInput.dietPreferences} options` : 
+          'balanced nutrition';
+          
+        const restrictions = this.userInput.restrictions ? 
+          `avoiding ${this.userInput.restrictions}` : 
+          '';
+        
+        this.dietPlan = {
+          days: [
+            {
+              meals: `Breakfast: Spinach and mushroom omelet with whole grain toast\nLunch: Quinoa bowl with roasted vegetables and chickpeas\nDinner: Grilled salmon with sweet potato and steamed broccoli\nSnacks: Greek yogurt with berries, handful of nuts\n\nFocus: Iron-rich foods ${healthFocus}, with ${dietType} ${restrictions}`
+            },
+            {
+              meals: `Breakfast: Overnight oats with chia seeds, almond milk and fresh fruits\nLunch: Mediterranean salad with olive oil dressing and grilled chicken\nDinner: Lentil soup with mixed vegetables and whole grain bread\nSnacks: Apple with almond butter, vegetable sticks with hummus\n\nFocus: Anti-inflammatory foods ${healthFocus}, with ${dietType} ${restrictions}`
+            },
+            {
+              meals: `Breakfast: Smoothie bowl with banana, berries, flax seeds and plant protein\nLunch: Buddha bowl with brown rice, avocado, roasted vegetables and tofu\nDinner: Baked white fish with quinoa and roasted Brussels sprouts\nSnacks: Dark chocolate (70%+), mixed nuts and seeds\n\nFocus: Hormone-balancing foods ${healthFocus}, with ${dietType} ${restrictions}`
+            }
+          ]
+        };
+      }
     }
   }
   </script>
   
   <style scoped>
+.personalized-diet-section {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  margin-bottom: 3rem;
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(213, 63, 140, 0.1);
+}
+
+.diet-image-container {
+  flex: 1;
+  max-width: 50%;
+  overflow: hidden;
+}
+
+.diet-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.diet-image:hover {
+  transform: scale(1.05);
+}
+
+.personalized-diet-input {
+  flex: 1;
+  padding: 2.5rem;
+  background: white;
+}
+
+.personalized-diet-input h2 {
+  color: #d53f8c;
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+}
+
+.input-description {
+  color: #718096;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.personalized-diet-input form {
+  display: flex;
+  flex-direction: column;
+}
+
+.personalized-diet-input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.personalized-diet-input input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.personalized-diet-input input:focus {
+  border-color: #d53f8c;
+  box-shadow: 0 0 0 3px rgba(213, 63, 140, 0.2);
+  outline: none;
+}
+
+.submit-btn {
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #d53f8c, #805ad5);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(213, 63, 140, 0.3);
+}
+
+.btn-icon {
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
+}
+
+/* 饮食方案样式 */
+.diet-plan-section {
+  margin-top: 3rem;
+}
+
+.plan-title {
+  text-align: center;
+  color: #2d3748;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.plan-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, #d53f8c, #805ad5);
+  border-radius: 2px;
+}
+
+.diet-plan-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.day-plan {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(213, 63, 140, 0.1);
+  transition: all 0.3s ease;
+}
+
+.day-plan:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(213, 63, 140, 0.15);
+}
+
+.day-header {
+  background: linear-gradient(135deg, #d53f8c, #805ad5);
+  padding: 1.2rem;
+  color: white;
+  display: flex;
+  align-items: center;
+}
+
+.day-number {
+  background: white;
+  color: #d53f8c;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 1rem;
+}
+
+.day-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.day-content {
+  padding: 1.5rem;
+}
+
+.day-content p {
+  color: #4a5568;
+  line-height: 1.7;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .personalized-diet-section {
+    flex-direction: column;
+  }
+  
+  .diet-image-container {
+    max-width: 100%;
+    height: 250px;
+  }
+  
+  .diet-plan-container {
+    grid-template-columns: 1fr;
+  }
+}
+
   .gradient-bg {
     background: #ffffff;
     min-height: 100vh;

@@ -23,35 +23,110 @@
         </div>
       </div>
     </div>
-
     
     <div class="dashboard">
-      <div class="left-panel">
-        <div class="appointment-form">
-          <h2>Book an Appointment</h2>
-          <label for="reason">Department</label>
-          <select id="reason" v-model="selectedReason">
-            <option disabled value="">Select department...</option>
-            <option>Gynecology</option>
-            <option>Endocrinology</option>
-            <option>Mental Health</option>
-            <option>Traditional Chinese Medicine</option>
-          </select>
-          <label for="notes">Notes</label>
-          <textarea 
-            id="notes" 
-            v-model="notes" 
-            placeholder="Add any notes about your visit..."
-            rows="3"
-          ></textarea>
-          <label for="name">Full Name</label>
-          <input type="text" id="name" v-model="name" placeholder="Enter your name" />
-          <label for="email">Email Address</label>
-          <input type="email" id="email" v-model="email" placeholder="Enter your email" />
-          <label for="phone">Phone Number</label>
-          <input type="tel" id="phone" v-model="phone" placeholder="Enter your phone number" />
+
+    <div class="left-panel">
+      <div class="appointment-form">
+        <h2 class="form-title">Book an Appointment</h2>
+  
+        <!-- 切换私人医生预约 -->
+        <div class="toggle-private-doctor">
+          <div class="toggle-header">
+            <i class="doctor-icon">👨‍⚕️</i>
+            <div class="toggle-text">
+              <h3>Have a private doctor?</h3>
+              <p>Click below to switch to private doctor appointment</p>
+            </div>
+          </div>
+          <button class="toggle-button" @click="showPersonalDoctorForm = !showPersonalDoctorForm">
+            {{ showPersonalDoctorForm ? 'Back to Regular Booking' : 'Book with Private Doctor' }}
+          </button>
+        </div>
+
+        <!-- 私人医生表单 -->
+        <div v-if="showPersonalDoctorForm" class="personal-doctor-form">
+          <h3 class="section-title">Private Doctor Appointment</h3>
+          
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" v-model="name" placeholder="Enter your name" />
+          </div>
+          
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" v-model="email" placeholder="Enter your email" />
+          </div>
+          
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" v-model="phone" placeholder="Enter your phone number" />
+          </div>
+          
+          <div class="form-group">
+            <label for="doctor-name">Doctor Name</label>
+            <input type="text" id="doctor-name" v-model="personalDoctor.name" placeholder="Enter doctor's name" />
+          </div>
+          
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea 
+              id="notes" 
+              v-model="notes" 
+              placeholder="Add any notes about your visit..."
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="appointment-date">Appointment Date</label>
+              <input type="date" id="appointment-date" v-model="personalDoctor.appointmentDate" />
+            </div>
+            
+            <div class="form-group half">
+              <label for="appointment-time">Appointment Time</label>
+              <input type="time" id="appointment-time" v-model="personalDoctor.appointmentTime" />
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button class="submit-button" @click="submitPersonalDoctorForm">Submit</button>
+            <button class="cancel-button" @click="showPersonalDoctorForm = false">Cancel</button>
+          </div>
+        </div>
+
+        <!-- 公司合作医生表单 -->
+        <div v-else class="company-doctor-form">
+          <h3 class="section-title">Company Partner Doctor</h3>
+
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea 
+              id="notes" 
+              v-model="notes" 
+              placeholder="Add any notes about your visit..."
+              rows="3"
+            ></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" v-model="name" placeholder="Enter your name" />
+          </div>
+          
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" v-model="email" placeholder="Enter your email" />
+          </div>
+          
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" v-model="phone" placeholder="Enter your phone number" />
+          </div>
         </div>
       </div>
+    </div>
       <div class="right-panel">
         <div class="available-doctors">
           <h2>Available Doctors</h2>
@@ -150,52 +225,22 @@ export default {
       doctors: [],
       availableTimeSlots: [],
       userId:localStorage.getItem('userId'),// 应该从用户登录信息中获取
-      userAppointments: []
+      userAppointments: [],
+      showPersonalDoctorForm: false,
+      personalDoctor: {
+        name: '',
+        appointmentDate: '',
+        appointmentTime: ''
+      }
     };
   },
+
   async created() {
     await this.loadDoctors();
     await this.checkExistingAppointments();
   },
 
   methods: {
-
-    async cancelAppointment(appointmentId) {
-    // 弹出确认提示框
-    const confirmation = window.confirm('Are you sure you want to cancel this appointment?');
-    if (!confirmation) return; // 如果用户取消，则不执行后续操作
-
-    try {
-      const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}`);
-      if (response.data.success) {
-        // 更新预约列表
-        await this.checkExistingAppointments();
-        alert('Appointment canceled successfully!');
-      }
-    } catch (error) {
-      console.error('Error canceling appointment:', error);
-      alert('Failed to cancel the appointment. Please try again later.');
-    }
-  },
-    
-    async modifyAppointment(appointmentId) {
-      // 弹出确认提示框
-      const confirmation = window.confirm('Are you sure you want to modify this appointment?');
-      if (!confirmation) return; // 如果用户取消，则不执行后续操作
-      try {
-        const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}`, {
-          notes: this.notes
-        });
-        if (response.data.success) {
-          // 更新预约列表
-          await this.checkExistingAppointments();
-          alert('Appointment modified successfully!');
-        }
-      } catch (error) {
-        console.error('Error modifying appointment:', error);
-        alert('Failed to modify the appointment. Please try again later.');
-      }
-    },
 
     async loadDoctors() {
       try {
@@ -213,12 +258,15 @@ export default {
         console.error('Error loading doctors:', error);
       }
     },
+
     formatAvailability(availability) {
       if (!availability) return 'Schedule not available';
       return Object.entries(availability)
         .map(([day, time]) => `${day}: ${time}`)
         .join('\n');
     },
+
+    
     formatAppointmentDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
@@ -231,28 +279,62 @@ export default {
       return `${month}/${day}/${year} ${hours}:${minutes}`;
     },
 
+    // async checkExistingAppointments() {
+    //   try {
+    //     const response = await axios.get(`${API_BASE_URL}/appointments/user/${this.userId}`);
+    //     if (response.data.success) {
+    //       // 筛选未来的预约，但不限制数量
+    //       const now = new Date();
+    //       this.userAppointments = response.data.data
+    //         .filter(appointment => new Date(appointment.appointment_date) > now)
+    //         .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+          
+    //       // 显示最近的预约
+    //       if (this.userAppointments.length > 0) {
+    //         const latestAppointment = this.userAppointments[0];
+    //         this.hasAppointment = true;
+    //         this.nextAppointment = {
+    //           doctor: latestAppointment.doctor_name,
+    //           date: this.formatAppointmentDate(latestAppointment.appointment_date),
+    //           status: latestAppointment.status
+    //         };
+    //       } else {
+    //         this.hasAppointment = false;
+    //         this.nextAppointment = {
+    //           doctor: '',
+    //           date: '',
+    //           status: ''
+    //         };
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.error('Error checking appointments:', error);
+    //   }
+    // },
+
+    // 由于公司医生和私人医生的预约最终存储在同一个数据库中，且通过 GET /appointments/user/:userId 返回，我们需要确保 checkExistingAppointments 方法能够正确处理两类预约的差异。例如，私人医生的预约可能没有 doctor_id，而是用 doctor_name 表示医生。
     async checkExistingAppointments() {
       try {
         const response = await axios.get(`${API_BASE_URL}/appointments/user/${this.userId}`);
         if (response.data.success) {
-          // 筛选未来的预约，但不限制数量
           const now = new Date();
           this.userAppointments = response.data.data
             .filter(appointment => new Date(appointment.appointment_date) > now)
             .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
-          
-          // 显示最近的预约
+
           if (this.userAppointments.length > 0) {
             const latestAppointment = this.userAppointments[0];
             this.hasAppointment = true;
             this.nextAppointment = {
-              doctor: latestAppointment.doctor_name,
+              id: latestAppointment.id, // 增加 ID 用于取消和修改
+              doctor: latestAppointment.doctor_name || 'Company Doctor', // 处理私人医生和公司医生
               date: this.formatAppointmentDate(latestAppointment.appointment_date),
               status: latestAppointment.status
             };
           } else {
             this.hasAppointment = false;
             this.nextAppointment = {
+              id: null,
               doctor: '',
               date: '',
               status: ''
@@ -262,7 +344,8 @@ export default {
       } catch (error) {
         console.error('Error checking appointments:', error);
       }
-    },
+},
+
     async selectDoctor(doctor) {
       this.selectedDoctor = doctor;
       this.selectedDate = null;
@@ -292,6 +375,7 @@ export default {
         }
       }
     },
+
     async updateAvailableTimeSlots() {
       if (!this.selectedDate || !this.selectedDoctor) return;
 
@@ -317,6 +401,8 @@ export default {
     selectTimeSlot(time) {
       this.selectedTime = time;
     },
+
+
     async bookAppointment() {
       if (!this.canBook) return;
 
@@ -345,6 +431,7 @@ export default {
         alert('Appointment failed, please try again later.');
       }
     },
+
     resetForm() {
       this.selectedReason = '';
       this.name = '';
@@ -356,6 +443,88 @@ export default {
       this.selectedTime = null;
     },
   },
+
+  async submitPersonalDoctorForm() {
+    try {
+      if (
+        !this.name ||
+        !this.email ||
+        !this.phone ||
+        !this.personalDoctor.name ||
+        !this.personalDoctor.appointmentDate ||
+        !this.personalDoctor.appointmentTime
+      ) {
+        alert('请填写所有必填字段');
+        return;
+      }
+
+      const appointmentData = {
+        user_id: this.userId,
+        doctor_name: this.personalDoctor.name,
+        appointment_date: `${this.personalDoctor.appointmentDate} ${this.personalDoctor.appointmentTime}`,
+        notes: this.notes,
+        status: 'scheduled'
+      };
+
+      const response = await axios.post(`${API_BASE_URL}/personal-appointments`, appointmentData);
+
+      if (response.data.success) {
+        await this.checkExistingAppointments();
+        this.resetPersonalDoctorForm();
+        alert('私人医生预约成功！');
+      }
+    } catch (error) {
+      console.error('Error booking personal doctor appointment:', error);
+      alert('预约失败，请稍后重试');
+    }
+  },
+
+  async cancelAppointment(appointmentId) {
+    if (!confirm('确定要取消这个预约吗？')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}`);
+
+      if (response.data.success) {
+        await this.checkExistingAppointments();
+        alert('预约已成功取消');
+      }
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      alert('取消预约失败，请稍后重试');
+    }
+  },
+
+  async modifyAppointment(appointmentId) {
+    const newDate = prompt('请输入新的预约日期 (YYYY-MM-DD):');
+    const newTime = prompt('请输入新的预约时间 (HH:MM):');
+
+    if (!newDate || !newTime) {
+      alert('请提供日期和时间');
+      return;
+    }
+
+    const newAppointmentDate = `${newDate} ${newTime}`;
+
+    try {
+      const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}`, {
+        appointment_date: newAppointmentDate
+      });
+
+      if (response.data.success) {
+        await this.checkExistingAppointments();
+        alert('预约修改成功');
+      }
+    } catch (error) {
+      console.error('Error modifying appointment:', error);
+      alert('修改预约失败，请稍后重试');
+    }
+  },
+  
+  
+
   computed: {
     minDate() {
       const today = new Date();
@@ -381,6 +550,129 @@ export default {
 
 <style scoped>
 
+.form-title {
+  font-size: 2rem;
+  color: #2d3748;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  position: relative;
+  padding-bottom: 0.8rem;
+}
+
+.form-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, #d53f8c, #805ad5);
+  border-radius: 2px;
+}
+
+.toggle-private-doctor {
+  background: linear-gradient(to right, #f6f0fd, #f9e4f0);
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 15px rgba(213, 63, 140, 0.1);
+  transition: all 0.3s ease;
+}
+
+.toggle-private-doctor:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(213, 63, 140, 0.15);
+}
+
+.toggle-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.doctor-icon {
+  font-size: 2.5rem;
+  background: white;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-text h3 {
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+  font-size: 1.3rem;
+}
+
+.toggle-text p {
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.toggle-button {
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #d53f8c, #805ad5);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(213, 63, 140, 0.3);
+}
+
+.section-title {
+  color: #2d3748;
+  margin: 1.5rem 0;
+  font-size: 1.4rem;
+  position: relative;
+  padding-left: 1rem;
+}
+
+
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: linear-gradient(to bottom, #d53f8c, #805ad5);
+  border-radius: 2px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.half {
+  flex: 1;
+}
+
+.personal-doctor-form, .company-doctor-form {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
 .appointment-actions {
   display: flex;
   gap: 1rem;
@@ -631,16 +923,59 @@ select:focus, input:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.3s ease;
 }
-
-.select-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(213, 63, 140, 0.3);
+.add-personal-doctor-button {
+  margin-top: 1rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #d53f8c, #805ad5);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
-
-.select-button.selected {
-  background: #2d3748;
+.personal-doctor-form {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #fafafa;
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
-
+.personal-doctor-form h3 {
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+}
+.personal-doctor-form label {
+  margin: 0.8rem 0;
+  color: #2d3748;
+  font-weight: 500;
+}
+.personal-doctor-form input {
+  width: 100%;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 2px solid rgba(213, 63, 140, 0.2);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+.submit-button, .cancel-button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  margin-right: 1rem;
+}
+.submit-button {
+  background: linear-gradient(135deg, #3182ce, #805ad5);
+}
+.cancel-button {
+  background: linear-gradient(135deg, #ff6b6b, #d53f8c);
+}
 .time-selection {
   margin-top: 2rem;
   padding: 1.5rem;
@@ -648,24 +983,20 @@ select:focus, input:focus, textarea:focus {
   border-radius: 15px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
-
 .time-selection h3 {
   color: #2d3748;
   margin-bottom: 1.5rem;
   font-size: 1.4rem;
 }
-
 .date-picker {
   margin-bottom: 1.5rem;
 }
-
 .time-slots {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
-
 .time-slot {
   padding: 0.8rem;
   text-align: center;
@@ -675,24 +1006,20 @@ select:focus, input:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
 .time-slot.available:hover {
   background: #f0f5ff;
   border-color: #d53f8c;
 }
-
 .time-slot.selected {
   background: #d53f8c;
   color: white;
   border-color: #d53f8c;
 }
-
 .time-slot:not(.available) {
   opacity: 0.5;
   cursor: not-allowed;
   background: #f7fafc;
 }
-
 .book-appointment-button {
   width: 100%;
   padding: 1rem;
@@ -706,12 +1033,10 @@ select:focus, input:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.3s ease;
 }
-
 .book-appointment-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(213, 63, 140, 0.3);
 }
-
 .book-appointment-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

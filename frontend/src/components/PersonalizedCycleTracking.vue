@@ -24,7 +24,8 @@
         </div>
 
         <div class="cards-grid">
-          <div class="card mood-card">
+          <!-- 去掉心情展示 -->
+          <!-- <div class="card mood-card">
             <div class="card-header">
               <h3>Today's Mood</h3>
             </div>
@@ -32,9 +33,9 @@
               <p class="mood-emoji">😊 {{ currentMood }}</p>
               <button @click="goToChangeMood" class="action-button">Update Mood</button>
             </div>
-          </div>
+          </div> -->
 
-          <div class="card cycle-card">
+          <div class="card cycle-card" style="grid-column: span 2;">
             <div class="card-header">
               <h3>Next Menstrual Cycle</h3>
             </div>
@@ -69,15 +70,44 @@
       <div class="right-panel">
         <div class="calendar-card">
           <h2>Calendar</h2>
+          
           <vue-cal
             v-model="selectedDate"
-            :events="events"
+            :events="events" 
             :disable-views="['years']"
             :time="false"
             default-view="month"
             class="custom-calendar"
           />
         </div>
+
+          <div class="calendar-header">
+            <button @click="showAddEventDialog">添加事件</button>
+            <button @click="showCancelEventDialog">取消事件</button>
+          </div>
+
+        <!-- 添加事件对话框 -->
+        <div v-if="showAddDialog" class="dialog">
+          <h3>添加事件</h3>
+          <input v-model="newEvent.title" placeholder="事件标题" />
+          <input v-model="newEvent.start" type="datetime-local" />
+          <input v-model="newEvent.end" type="datetime-local" />
+          <button @click="addEvent">提交</button>
+          <button @click="closeAddDialog">关闭</button>
+        </div>
+
+        <!-- 取消事件对话框 -->
+        <div v-if="showCancelDialog" class="dialog">
+          <h3>取消事件</h3>
+          <select v-model="selectedEventId">
+            <option v-for="event in events" :key="event.id" :value="event.id">
+              {{ event.title }}
+            </option>
+          </select>
+          <button @click="cancelEvent">确认取消</button>
+          <button @click="closeCancelDialog">关闭</button>
+        </div>  
+
         <div class="ask-sani-card" @click="goToAskSani">
           <div class="ask-content">
             <div class="ask-icon">🥰</div>
@@ -95,6 +125,7 @@
 <script>
 import 'vue-cal/dist/vuecal.css'
 import VueCal from 'vue-cal'
+import axios from 'axios' // 确保引入axios
 
 export default {
   name: 'PersonalizedCycleTracking',
@@ -103,29 +134,16 @@ export default {
   },
   data() {
     return {
-      username: localStorage.getItem('username') || 'Guest', // 从本地存储获取用户名
-      currentMood: localStorage.getItem('currentMood') || 'Normal',
+      username: localStorage.getItem('username') || 'Guest',
       upcomingAppointment: {
-        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), // 使用当前日期
+        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       },
       selectedDate: new Date(),
-      events: [
-        {
-          id: 1,
-          start: '2024-01-20',
-          end: '2024-01-20',
-          title: 'Doctor Appointment',
-        },
-        {
-          id: 2,
-          start: '2024-01-25',
-          end: '2024-01-25',
-          title: 'Menstrual Cycle Start',
-        }
-      ],
+      events: [] // 初始化事件数组
     }
   },
   mounted() {
+    this.fetchUserEvents(); // 在组件挂载时调用方法获取事件
     window.addEventListener('storage', (e) => {
       if (e.key === 'currentMood') {
         this.currentMood = e.newValue;
@@ -133,10 +151,23 @@ export default {
     });
   },
   methods: {
-    updateMood(newMood) {
-      this.currentMood = newMood;
-      alert(`Mood updated to: ${newMood}`);
+    fetchUserEvents() {
+      axios.get('/api/user/events') // 假设后端提供了这个API
+        .then(response => {
+          if (response.data.success) {
+            this.events = response.data.events.map(event => ({
+              id: event.id,
+              start: event.start_date,
+              end: event.end_date,
+              title: event.title
+            }));
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching user events:', error);
+        });
     },
+
     viewCycleDetails() {
       this.$router.push('/next-inspection');
     },
@@ -329,9 +360,9 @@ export default {
 
 .action-button, .details-button {
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #d53f8c, #805ad5);
-  color: white;
-  border: none;
+  background: transparent; /* 设置背景为透明 */
+  color: #d53f8c; /* 设置文本颜色 */
+  border: 2px solid #d53f8c; /* 设置边框颜色 */
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s;
@@ -342,6 +373,7 @@ export default {
 .action-button:hover, .details-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(213, 63, 140, 0.2);
+  background: rgba(213, 63, 140, 0.1); /* 悬停时添加轻微背景色 */
 }
 
 .ask-sani-card {
