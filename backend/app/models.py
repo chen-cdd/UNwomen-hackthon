@@ -41,6 +41,7 @@ class Appointment(Base):
     appointment_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     doctor_id = Column(Integer, ForeignKey("doctors.doctor_id"), nullable=True)
+    doctor_name = Column(String(255), nullable=True)
     appointment_date = Column(TIMESTAMP, nullable=False)
     status = Column(Enum(AppointmentStatus), nullable=True)
     notes = Column(Text, nullable=True)
@@ -69,3 +70,16 @@ class UserProfile(Base):
     health_conditions = Column(JSON, nullable=True)
     privacy_settings = Column(JSON, nullable=True)
     last_updated = Column(TIMESTAMP, nullable=False)
+
+
+class Event(Base):
+    """
+    事件表
+    """
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True, comment="事件ID")
+    user_id = Column(Integer, index=True, nullable=False, comment="用户ID")
+    title = Column(String, nullable=False, comment="事件标题")
+    start_date = Column(DateTime, nullable=False, comment="事件开始时间")
+    end_date = Column(DateTime, nullable=False, comment="事件结束时间")

@@ -5,9 +5,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict
 
-from .crud import get_chat_history, get_doctors, get_user_appointments, get_doctor_availability, create_appointment, store_user_message, store_bot_message, get_user_by_email, verify_password, create_user
+from .crud import get_chat_history, get_doctors, get_user_appointments, get_doctor_availability, create_appointment, store_user_message, store_bot_message, get_user_by_email, verify_password, create_user, cancel_appointment, update_appointment, get_user_events, add_user_event, create_personal_appointment
 from .models import User, Doctor, Appointment, ChatHistory
-from .schemas import  LoginRequest, RegisterRequest, ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate
+from .schemas import LoginRequest, RegisterRequest, ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate, UpdateAppointmentRequest, EventRequest, PersonalAppointmentCreate
 from .database import SessionLocal
 from .utils import call_dify_api  # 导入工具函数
 from fastapi.middleware.cors import CORSMiddleware  # 添加这行导入
@@ -62,7 +62,7 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
         "message": "注册成功"
     }
 
-# 1. 获取用户的聊天历史
+# 获取用户的聊天历史
 @app.get("/api/chat/history", response_model=ChatHistoryDataResponse)
 def get_chat_history_endpoint(user_id: int, db: Session = Depends(get_db)):
     chat_history = get_chat_history(db, user_id)
@@ -73,42 +73,6 @@ def get_chat_history_endpoint(user_id: int, db: Session = Depends(get_db)):
     }
 
 
-# # 2. 发送一条聊天消息
-# @app.post("/api/chat/message", response_model=dict)
-# def create_chat_message(message: CreateChatMessage, db: Session = Depends(get_db)):
-#     # 1. 存储用户的消息
-#     user_message = store_user_message(db, message.dict())
-
-#     payload = {
-#         "inputs": {},
-#         "query": message.message,
-#         "response_mode": "blocking",
-#         "conversation_id": message.conversation_id,
-#         "user": message.user_id,
-#         "files": []
-#     }
-
-#     # 2. 调用 DIFY API 获取机器人的回复
-#     bot_response = call_dify_api(payload)
-
-#     # 检查 bot_response 是否有效
-#     if not bot_response or "conversation_id" not in bot_response or "answer" not in bot_response:
-#         raise HTTPException(status_code=500, detail="Failed to get a valid response from the bot")
-
-#     # 确保 answer 是一个有效的字符串
-#     answer = bot_response.get("answer", "Sorry, I don't have an answer for that.")
-
-#     # 3. 存储机器人的消息
-#     bot_message = store_bot_message(db, {"conversation_id": conversation_id, "answer": answer}, message.user_id)
-
-#     # 返回响应
-#     return {
-#         "success": True,
-#         "response": answer,
-#         "chat_id": user_message.chat_id,
-#         "conversation_id": conversation_id
-#     }
-# 2. 发送一条聊天消息
 @app.post("/api/chat/message", response_model=dict)
 def create_chat_message(message: CreateChatMessage, db: Session = Depends(get_db)):
     # 1. 存储用户的消息
@@ -153,7 +117,7 @@ def create_chat_message(message: CreateChatMessage, db: Session = Depends(get_db
     }
 
 
-# 3. 获取医生列表
+# 获取医生列表
 @app.get("/api/doctors", response_model=DoctorDataResponse)
 def get_doctors_endpoint(db: Session = Depends(get_db)):
     # 返回响应
@@ -163,7 +127,7 @@ def get_doctors_endpoint(db: Session = Depends(get_db)):
     }
 
 
-# 4. 获取用户预约记录
+# 获取用户预约记录
 @app.get("/api/appointments/user/{user_id}", response_model=AppointmentDataResponse)
 def get_user_appointments_endpoint(user_id: int, db: Session = Depends(get_db)):
     # 返回响应
@@ -173,7 +137,29 @@ def get_user_appointments_endpoint(user_id: int, db: Session = Depends(get_db)):
     }
 
 
-# 5. 获取医生的可用时间
+# 取消预约接口
+@app.delete("/api/appointments/{appointment_id}")
+def cancel_appointment_endpoint(appointment_id: int, db: Session = Depends(get_db)):
+    if cancel_appointment(db, appointment_id):
+        return {
+            "success": True,
+            "message": "预约已成功取消"
+        }
+    raise HTTPException(status_code=500, detail="取消预约失败")
+
+
+# 修改预约接口
+@app.put("/api/appointments/{appointment_id}")
+def update_appointment_endpoint(appointment_id: int, request: UpdateAppointmentRequest, db: Session = Depends(get_db)):
+    updated_appointment = update_appointment(db, appointment_id, request.appointment_date)
+
+    return {
+        "success": True,
+        "message": "预约已成功修改",
+        "data": updated_appointment
+    }
+
+# 获取医生的可用时间
 @app.get("/api/doctors/{doctor_id}/availability", response_model=dict)
 def get_doctor_availability_endpoint(doctor_id: int, queryTime: str, db: Session = Depends(get_db)):
 
@@ -187,7 +173,7 @@ def get_doctor_availability_endpoint(doctor_id: int, queryTime: str, db: Session
     return {"success": True, "data": availability}
 
 
-# 6. 创建预约
+# 创建预约
 @app.post("/api/appointments", response_model=dict)
 def create_appointment_endpoint(appointment: AppointmentCreate, db: Session = Depends(get_db)):
     new_appointment = create_appointment(
@@ -211,6 +197,49 @@ def create_appointment_endpoint(appointment: AppointmentCreate, db: Session = De
             "status": new_appointment.status
         },
         "message": "Appointment successful!"
+    }
+
+# 创建私人医生预约
+@app.post("/api/personal-appointments", response_model=dict)
+def create_appointment_endpoint(appointment: PersonalAppointmentCreate, db: Session = Depends(get_db)):
+    new_appointment = create_personal_appointment(
+        db,
+        appointment.user_id,
+        appointment.doctor_name,
+        appointment.appointment_date,
+        appointment.status,
+        appointment.notes
+    )
+    if not new_appointment:
+        raise HTTPException(status_code=400, detail="Unable to create appointment")
+
+    return {
+        "success": True,
+        "data": {
+            "appointment_id": new_appointment.appointment_id,
+            "doctor_name": appointment.doctor_name,
+            "appointment_date": new_appointment.appointment_date,
+            "status": new_appointment.status
+        },
+        "message": "Appointment successful!"
+    }
+
+# 获取用户事件
+@app.get("/api/user/events/{user_id}")
+def get_user_events_endpoint(user_id: int, db: Session = Depends(get_db)):
+    events = get_user_events(db, user_id)
+    return {
+        "success": True,
+        "events": events
+    }
+
+# 添加事件
+@app.post("/api/events/add/{user_id}")
+def add_event_endpoint(user_id: int, request: EventRequest, db: Session = Depends(get_db)):
+    event = add_user_event(db, user_id, request.title, request.start, request.end)
+    return {
+        "success": True,
+        "event": event
     }
 
 

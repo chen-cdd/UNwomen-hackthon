@@ -13,6 +13,10 @@ class RegisterRequest(BaseModel):
     fullname: str  # 添加 fullname 字段
     password: str
 
+# 修改预约请求体
+class UpdateAppointmentRequest(BaseModel):
+    appointment_date: str
+
 class ChatHistoryResponse(BaseModel):
     chat_id: int
     user_id: int
@@ -74,3 +78,19 @@ class AppointmentCreate(BaseModel):
 
     class Config:
         orm_mode = True
+
+class PersonalAppointmentCreate(BaseModel):
+    user_id: int
+    doctor_name: str
+    appointment_date: datetime
+    status: str = "scheduled"
+    notes: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+# 事件数据模型
+class EventRequest(BaseModel):
+    title: str
+    start: str
+    end: str

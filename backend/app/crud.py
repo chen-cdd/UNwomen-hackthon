@@ -4,7 +4,7 @@ import json
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from .models import User, Doctor, Appointment, ChatHistory
+from .models import User, Doctor, Appointment, ChatHistory, Event
 from datetime import datetime, timedelta
 from .utils import get_weekday, call_dify_api  # 导入工具函数
 
@@ -116,7 +116,7 @@ def get_user_appointments(db: Session, user_id: int):
     return [
         {
             "appointment_id": appointment.appointment_id,
-            "doctor_name": doctor_map.get(appointment.doctor_id, "Unknown Doctor"),
+            "doctor_name": doctor_map.get(appointment.doctor_id, appointment.doctor_name),
             "appointment_date": appointment.appointment_date,
             "status": appointment.status,
             "notes": appointment.notes
@@ -124,12 +124,36 @@ def get_user_appointments(db: Session, user_id: int):
         for appointment in appointments
     ]
 
-# # 获取医生的可用时间
-# def get_doctor_availability(db: Session, doctor_id: int, weekday: str):
-#     doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-#     if doctor:
-#         return doctor.availability
-#     return None
+
+# 取消预约
+def cancel_appointment(db: Session, appointment_id: int):
+    appointment = db.query(Appointment).filter(Appointment.appointment_id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="预约不存在")
+
+    db.delete(appointment)
+    db.commit()
+    return True
+
+
+# 修改预约
+def update_appointment(db: Session, appointment_id: int, new_date: str):
+    appointment = db.query(Appointment).filter(Appointment.appointment_id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="预约不存在")
+
+    try:
+        appointment.appointment_date = datetime.strptime(new_date, "%Y-%m-%d %H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="时间格式错误，应为 YYYY-MM-DD HH:MM")
+
+    db.commit()
+    db.refresh(appointment)
+    return appointment
+
+
 # 获取医生的可用时间并检查每个时间段是否有预约
 def get_doctor_availability(db: Session, doctor_id: int, queryTime: str) -> List[Dict]:
     # 先转换 queryTime 为星期
@@ -198,12 +222,6 @@ def create_appointment(db: Session, user_id: int, doctor_id: int, appointment_da
     if not doctor:
         return None
 
-    # # 检查用户是否已有未完成的预约
-    # existing_appointment = db.query(Appointment).filter(Appointment.user_id == user_id,
-    #                                                     Appointment.status == "scheduled").first()
-    # if existing_appointment:
-    #     raise HTTPException(status_code=400, detail="用户有未完成的预约")
-
     # 检查用户是否已有未完成的预约（只检查未来的预约）
     current_time = datetime.now()
     existing_appointment = db.query(Appointment).filter(
@@ -236,3 +254,71 @@ def create_appointment(db: Session, user_id: int, doctor_id: int, appointment_da
     db.refresh(new_appointment)
 
     return new_appointment
+
+# 创建私人医生预约
+def create_personal_appointment(db: Session, user_id: int, doctor_name: str, appointment_date: datetime, status: str, notes: str):
+    # 检查用户是否已有未完成的预约（只检查未来的预约）
+    current_time = datetime.now()
+    existing_appointment = db.query(Appointment).filter(
+        Appointment.user_id == user_id,
+        Appointment.status == "scheduled",
+        Appointment.appointment_date > current_time
+    ).first()
+
+    if existing_appointment:
+        raise HTTPException(status_code=400, detail="The user has unfinished appointments")
+
+    new_appointment = Appointment(
+        user_id=user_id,
+        doctor_name=doctor_name,
+        appointment_date=appointment_date,
+        status=status,
+        notes=notes
+    )
+    db.add(new_appointment)
+    db.commit()
+    db.refresh(new_appointment)
+
+    return new_appointment
+
+
+# 获取用户所有事件
+def get_user_events(db: Session, user_id: int) -> List[Dict]:
+    events = db.query(Event).filter(Event.user_id == user_id).all()
+
+    return [
+        {
+            "id": str(event.id),
+            "start_date": event.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            "end_date": event.end_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            "title": event.title
+        }
+        for event in events
+    ]
+
+
+# 添加用户事件
+def add_user_event(db: Session, user_id: int, title: str, start: str, end: str) -> Dict:
+    try:
+        start_datetime = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S")
+        end_datetime = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="时间格式错误，应为 YYYY-MM-DDTHH:MM:SS")
+
+    new_event = Event(
+        user_id=user_id,
+        title=title,
+        start_date=start_datetime,
+        end_date=end_datetime
+    )
+
+    db.add(new_event)
+    db.commit()
+    db.refresh(new_event)
+
+    return {
+        "id": str(new_event.id),
+        "start_date": new_event.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+        "end_date": new_event.end_date.strftime("%Y-%m-%dT%H:%M:%S"),
+        "title": new_event.title
+    }
