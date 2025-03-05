@@ -70,7 +70,6 @@
       <div class="right-panel">
         <div class="calendar-card">
           <h2>Calendar</h2>
-          
           <vue-cal
             v-model="selectedDate"
             :events="events" 
@@ -79,35 +78,21 @@
             default-view="month"
             class="custom-calendar"
           />
+          <button @click="showAddEventDialog">添加事件</button>
         </div>
 
-          <div class="calendar-header">
-            <button @click="showAddEventDialog">添加事件</button>
-            <button @click="showCancelEventDialog">取消事件</button>
+          <!-- 添加事件对话框 -->
+          <div v-if="showAddDialog" class="dialog">
+            <h3>添加事件</h3>
+            <input v-model="newEvent.title" placeholder="事件标题" />
+            <input v-model="newEvent.start" type="datetime-local" />
+            <input v-model="newEvent.end" type="datetime-local" />
+
+            <button @click="submitEvent">提交</button>
+            <button @click="closeAddDialog">关闭</button>
           </div>
 
-        <!-- 添加事件对话框 -->
-        <div v-if="showAddDialog" class="dialog">
-          <h3>添加事件</h3>
-          <input v-model="newEvent.title" placeholder="事件标题" />
-          <input v-model="newEvent.start" type="datetime-local" />
-          <input v-model="newEvent.end" type="datetime-local" />
-          <button @click="addEvent">提交</button>
-          <button @click="closeAddDialog">关闭</button>
-        </div>
-
-        <!-- 取消事件对话框 -->
-        <div v-if="showCancelDialog" class="dialog">
-          <h3>取消事件</h3>
-          <select v-model="selectedEventId">
-            <option v-for="event in events" :key="event.id" :value="event.id">
-              {{ event.title }}
-            </option>
-          </select>
-          <button @click="cancelEvent">确认取消</button>
-          <button @click="closeCancelDialog">关闭</button>
-        </div>  
-
+    
         <div class="ask-sani-card" @click="goToAskSani">
           <div class="ask-content">
             <div class="ask-icon">🥰</div>
@@ -139,9 +124,13 @@ export default {
         date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       },
       selectedDate: new Date(),
-      events: [] // 初始化事件数组
+      events: [], // 初始化事件数组
+      newEvent: { title: '', start: '', end: '' }, // 初始化新事件对象
+      showAddDialog: false, // 控制添加事件对话框的显示
+      // ... existing data ...
     }
   },
+
   mounted() {
     this.fetchUserEvents(); // 在组件挂载时调用方法获取事件
     window.addEventListener('storage', (e) => {
@@ -150,15 +139,17 @@ export default {
       }
     });
   },
+
   methods: {
     fetchUserEvents() {
-      axios.get('/api/user/events') // 假设后端提供了这个API
+      const userId = localStorage.getItem('userId');
+      axios.get(`http://localhost:8000/api/user/events/${userId}`)
         .then(response => {
           if (response.data.success) {
             this.events = response.data.events.map(event => ({
               id: event.id,
-              start: event.start_date,
-              end: event.end_date,
+              start: new Date(event.start_date), // Ensure start is a Date object
+              end: new Date(event.end_date), // Ensure end is a Date object
               title: event.title
             }));
           }
@@ -166,6 +157,39 @@ export default {
         .catch(error => {
           console.error('Error fetching user events:', error);
         });
+    },
+
+    showAddEventDialog() {
+      this.showAddDialog = true; // 显示添加事件对话框
+    },
+    
+    submitEvent() {
+      const userId = localStorage.getItem('userId');
+      const formattedEvent = {
+        title: this.newEvent.title,
+        start: new Date(this.newEvent.start).toISOString().slice(0, 19),
+        end: new Date(this.newEvent.end).toISOString().slice(0, 19)
+      };
+      axios.post(`http://localhost:8000/api/events/add/${userId}`, formattedEvent)
+        .then(response => {
+          if (response.data.success) {
+            this.events.push({
+              id: response.data.event.id,
+              start: new Date(response.data.event.start), // Ensure start is a Date object
+              end: new Date(response.data.event.end), // Ensure end is a Date object
+              title: response.data.event.title
+            });
+            this.closeAddDialog();
+          }
+        })
+        .catch(error => {
+          console.error('Error adding event:', error);
+        });
+    },
+
+    closeAddDialog() {
+      this.showAddDialog = false;
+      this.newEvent = { title: '', start: '', end: '' }; // 重置新事件对象
     },
 
     viewCycleDetails() {

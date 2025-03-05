@@ -13,8 +13,26 @@
           <label>End Date:</label>
           <input type="date" v-model="period.end" />
         </div>
-        <button class="add-btn" @click="addPeriod">Add Another Period</button>
+        <button class="add-btn" @click="saveCycleRecord">Save Period Record</button>
         <button class="predict-btn" @click="predictNextPeriod">Predict Next Period</button>
+      </div>
+
+       <!-- 添加历史记录显示区域 -->
+      <div class="cycle-history" v-if="cycleRecords.length > 0">
+        <h2>Period History</h2>
+        <div class="history-list">
+          <div v-for="record in cycleRecords" :key="record.record_id" class="history-item">
+            <div class="history-dates">
+              <span class="date-label">Start:</span>
+              <span class="date-value">{{ formatDate(record.cycle_start_date) }}</span>
+              <span class="date-label">End:</span>
+              <span class="date-value">{{ formatDate(record.cycle_end_date) }}</span>
+            </div>
+            <div class="duration">
+              Duration: {{ calculateDuration(record.cycle_start_date, record.cycle_end_date) }} days
+            </div>
+          </div>
+        </div>
       </div>
 
         <div class="next-appointment">
@@ -71,7 +89,6 @@
       return {
         nextAppointment: null, // 初始化为null，直到预测生成结果
         pastPeriods: [{ start: '', end: '' }], // 存储用户输入的经期数据
-
         showLeaveForm: false, // 控制请假表单的显示
         leaveRequest: {
           startDate: '',
@@ -79,6 +96,8 @@
           reason: ''
         },
         leaveStatus: null, // 存储请假状态
+        cycleRecords: [], // 添加这一行
+        userId: localStorage.getItem('userId'), // 添加这一行
 
         periodCareTypes: [
         {
@@ -116,30 +135,105 @@
       }
     },
 
-    methods: {
+    async created() {
+        await this.loadCycleRecords(); // 添加这一行
+        // ... existing created code if any ...
+      },
 
-      addPeriod() {
+    methods: {
+     // 保存周期记录
+     async saveCycleRecord() {
+      try {
+        const currentPeriod = this.pastPeriods[this.pastPeriods.length - 1];
+        if (!currentPeriod.start || !currentPeriod.end) {
+          alert('请输入完整的开始和结束日期');
+          return;
+        }
+
+        const response = await fetch(`http://localhost:8000/api/cycle/add/${this.userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cycle_start_date: currentPeriod.start,
+            cycle_end_date: currentPeriod.end
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          alert('记录保存成功！');
+          await this.loadCycleRecords(); // 重新加载记录
+        }
+      } catch (error) {
+        console.error('保存记录失败:', error);
+        alert('保存记录失败，请重试');
+      }
+    },
+
+    // 加载周期记录
+    async loadCycleRecords() {
+      try {
+        const response = await fetch(`http://localhost:8000/api/cycle/${this.userId}`);
+        const data = await response.json();
+        if (data.success) {
+          this.cycleRecords = data.records;
+        }
+      } catch (error) {
+        console.error('加载记录失败:', error);
+      }
+    },
+
+    // 格式化日期
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    },
+
+    // 计算持续天数
+    calculateDuration(startDate, endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end - start);
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    },
+
+    addPeriod() {
       this.pastPeriods.push({ start: '', end: '' });
     },
 
     async predictNextPeriod() {
       try {
-        const response = await fetch('/api/predict', {
+        const response = await fetch('https://api.dify.ai/v1/workflows/run', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pastPeriods: this.pastPeriods })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'app-1APBtuu59fEsBytqy6goivAh'
+          },
+          body: JSON.stringify({
+            inputs: {
+              periods: this.pastPeriods
+            },
+            response_mode: 'blocking',
+            user: this.userId || 'anonymous'
+          })
         });
+
         const data = await response.json();
-        this.nextAppointment = {
-          month: new Date(data.nextStart).toLocaleString('default', { month: 'long' }),
-          day: new Date(data.nextStart).getDate(),
-          phase: 'Menstrual Phase',
-          duration: data.duration,
-          cycleLength: data.cycleLength
-        };
+        if (data.data && data.data.outputs) {
+          const prediction = data.data.outputs;
+          this.nextAppointment = {
+            month: new Date(prediction.predicted_date).toLocaleString('default', { month: 'long' }),
+            day: new Date(prediction.predicted_date).getDate(),
+            phase: `Menstrual Phase (${prediction.confidence || '高'}置信度)`,
+            duration: `${prediction.duration || '5-7'} 天`,
+            cycleLength: `${prediction.cycle_length || '28'} 天`
+          };
+        } else {
+          throw new Error('预测结果格式不正确');
+        }
       } catch (error) {
-        console.error('Prediction error:', error);
-        alert('Failed to predict next period. Please try again.');
+        console.error('预测错误:', error);
+        alert('预测失败，请重试。');
       }
     },
 
@@ -151,7 +245,7 @@
         
         try {
           // 这里可以添加与后端API的交互
-          const response = await fetch('/api/request-leave', {
+          const response = await fetch('http://localhost:8000/api/request-leave', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(this.leaveRequest)

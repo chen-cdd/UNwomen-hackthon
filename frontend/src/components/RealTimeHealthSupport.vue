@@ -266,7 +266,6 @@ export default {
         .join('\n');
     },
 
-    
     formatAppointmentDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
@@ -402,7 +401,6 @@ export default {
       this.selectedTime = time;
     },
 
-
     async bookAppointment() {
       if (!this.canBook) return;
 
@@ -442,44 +440,53 @@ export default {
       this.selectedDate = null;
       this.selectedTime = null;
     },
-  },
 
-  async submitPersonalDoctorForm() {
-    try {
-      if (
-        !this.name ||
-        !this.email ||
-        !this.phone ||
-        !this.personalDoctor.name ||
-        !this.personalDoctor.appointmentDate ||
-        !this.personalDoctor.appointmentTime
-      ) {
-        alert('请填写所有必填字段');
-        return;
+    async submitPersonalDoctorForm() {
+      try {
+        const appointmentData = {
+          user_id: this.userId,
+          doctor_name: this.personalDoctor.name,
+          appointment_date: `${this.personalDoctor.appointmentDate} ${this.personalDoctor.appointmentTime}`,
+          status: 'scheduled',
+          notes: this.notes
+        };
+
+        const response = await axios.post(
+          `${API_BASE_URL}/personal-appointments`,
+          appointmentData
+        );
+
+        if (response.data.success) {
+          // 更新预约状态
+          this.hasAppointment = true;
+          this.nextAppointment = {
+            id: response.data.data.appointment_id,
+            doctor: response.data.data.doctor_name,
+            date: response.data.data.appointment_date,
+            status: response.data.data.status
+          };
+          
+          // 清空表单
+          this.personalDoctor = {
+            name: '',
+            appointmentDate: '',
+            appointmentTime: ''
+          };
+          this.notes = '';
+          
+          // 关闭私人医生表单
+          this.showPersonalDoctorForm = false;
+          
+          // 可以添加成功提示
+          alert('预约成功！');
+        }
+      } catch (error) {
+        console.error('Error submitting personal doctor appointment:', error);
+        alert('预约失败，请重试');
       }
+    },
 
-      const appointmentData = {
-        user_id: this.userId,
-        doctor_name: this.personalDoctor.name,
-        appointment_date: `${this.personalDoctor.appointmentDate} ${this.personalDoctor.appointmentTime}`,
-        notes: this.notes,
-        status: 'scheduled'
-      };
-
-      const response = await axios.post(`${API_BASE_URL}/personal-appointments`, appointmentData);
-
-      if (response.data.success) {
-        await this.checkExistingAppointments();
-        this.resetPersonalDoctorForm();
-        alert('私人医生预约成功！');
-      }
-    } catch (error) {
-      console.error('Error booking personal doctor appointment:', error);
-      alert('预约失败，请稍后重试');
-    }
-  },
-
-  async cancelAppointment(appointmentId) {
+    async cancelAppointment(appointmentId) {
     if (!confirm('确定要取消这个预约吗？')) {
       return;
     }
@@ -522,8 +529,9 @@ export default {
       alert('修改预约失败，请稍后重试');
     }
   },
-  
-  
+
+  },
+
 
   computed: {
     minDate() {
