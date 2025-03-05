@@ -71,11 +71,8 @@ class UserProfile(Base):
     privacy_settings = Column(JSON, nullable=True)
     last_updated = Column(TIMESTAMP, nullable=False)
 
-
+# 事件模型
 class Event(Base):
-    """
-    事件表
-    """
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True, comment="事件ID")
@@ -83,3 +80,16 @@ class Event(Base):
     title = Column(String, nullable=False, comment="事件标题")
     start_date = Column(DateTime, nullable=False, comment="事件开始时间")
     end_date = Column(DateTime, nullable=False, comment="事件结束时间")
+
+# 月经记录模型
+class CycleRecord(Base):
+    __tablename__ = "cycle_records"
+
+    record_id = Column(Integer, primary_key=True, autoincrement=True, comment="记录ID")
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True, comment="用户ID")
+    cycle_start_date = Column(Date, nullable=False, comment="周期开始日期")
+    cycle_end_date = Column(Date, nullable=True, comment="周期结束日期")
+    symptoms = Column(JSON, nullable=True, default=[], comment="症状")  # 默认空列表
+    mood = Column(String(50), nullable=True, default="", comment="情绪")  # 默认空字符串
+    notes = Column(Text, nullable=True, default="", comment="备注")  # 默认空字符串
+    created_at = Column(TIMESTAMP, nullable=False, default=func.now())  # 自动填充当前时间

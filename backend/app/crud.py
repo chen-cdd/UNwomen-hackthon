@@ -1,10 +1,10 @@
 # crud.py
-from typing import Dict, List
+from typing import Dict, List, Optional
 import json
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from .models import User, Doctor, Appointment, ChatHistory, Event
+from .models import User, Doctor, Appointment, ChatHistory, Event, CycleRecord
 from datetime import datetime, timedelta
 from .utils import get_weekday, call_dify_api  # 导入工具函数
 
@@ -322,3 +322,47 @@ def add_user_event(db: Session, user_id: int, title: str, start: str, end: str) 
         "end_date": new_event.end_date.strftime("%Y-%m-%dT%H:%M:%S"),
         "title": new_event.title
     }
+
+# 添加用户月经周期
+def add_cycle_record(db: Session, user_id: int, cycle_start_date: str, cycle_end_date: Optional[str]) -> Dict:
+    try:
+        start_date = datetime.strptime(cycle_start_date, "%Y-%m-%d").date()
+        end_date = datetime.strptime(cycle_end_date, "%Y-%m-%d").date() if cycle_end_date else None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式错误，应为 YYYY-MM-DD")
+
+    new_record = CycleRecord(
+        user_id=user_id,
+        cycle_start_date=start_date,
+        cycle_end_date=end_date,
+        symptoms=[],  # 空列表
+        mood="",  # 空字符串
+        notes=""  # 空字符串
+    )
+
+    db.add(new_record)
+    db.commit()
+    db.refresh(new_record)
+
+    return {
+        "record_id": new_record.record_id,
+        "user_id": new_record.user_id,
+        "cycle_start_date": new_record.cycle_start_date.strftime("%Y-%m-%d"),
+        "cycle_end_date": new_record.cycle_end_date.strftime("%Y-%m-%d") if new_record.cycle_end_date else None,
+        "created_at": new_record.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+# 获取用户月经周期
+def get_user_cycle_records(db: Session, user_id: int) -> List[Dict]:
+    records = db.query(CycleRecord).filter(CycleRecord.user_id == user_id).all()
+
+    return [
+        {
+            "record_id": record.record_id,
+            "user_id": record.user_id,
+            "cycle_start_date": record.cycle_start_date.strftime("%Y-%m-%d"),
+            "cycle_end_date": record.cycle_end_date.strftime("%Y-%m-%d") if record.cycle_end_date else None,
+            "created_at": record.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        for record in records
+    ]

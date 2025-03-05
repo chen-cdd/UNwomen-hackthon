@@ -94,3 +94,8 @@ class EventRequest(BaseModel):
     title: str
     start: str
     end: str
+
+# 月经周期数据模型
+class CycleRecordRequest(BaseModel):
+    cycle_start_date: str
+    cycle_end_date: Optional[str] = None

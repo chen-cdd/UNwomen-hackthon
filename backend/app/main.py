@@ -5,9 +5,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict
 
-from .crud import get_chat_history, get_doctors, get_user_appointments, get_doctor_availability, create_appointment, store_user_message, store_bot_message, get_user_by_email, verify_password, create_user, cancel_appointment, update_appointment, get_user_events, add_user_event, create_personal_appointment
+from .crud import get_chat_history, get_doctors, get_user_appointments, get_doctor_availability, create_appointment, store_user_message, store_bot_message, get_user_by_email, verify_password, create_user, cancel_appointment, update_appointment, get_user_events, add_user_event, create_personal_appointment, add_cycle_record, get_user_cycle_records
 from .models import User, Doctor, Appointment, ChatHistory
-from .schemas import LoginRequest, RegisterRequest, ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate, UpdateAppointmentRequest, EventRequest, PersonalAppointmentCreate
+from .schemas import LoginRequest, RegisterRequest, ChatHistoryDataResponse, CreateChatMessage, DoctorDataResponse, AppointmentDataResponse, AppointmentCreate, UpdateAppointmentRequest, EventRequest, PersonalAppointmentCreate, CycleRecordRequest
 from .database import SessionLocal
 from .utils import call_dify_api  # 导入工具函数
 from fastapi.middleware.cors import CORSMiddleware  # 添加这行导入
@@ -242,6 +242,23 @@ def add_event_endpoint(user_id: int, request: EventRequest, db: Session = Depend
         "event": event
     }
 
+
+@app.post("/api/cycle/add/{user_id}")
+def add_cycle_record_endpoint(user_id: int, request: CycleRecordRequest, db: Session = Depends(get_db)):
+    record = add_cycle_record(db, user_id, request.cycle_start_date, request.cycle_end_date)
+    return {
+        "success": True,
+        "record": record
+    }
+
+# 获取用户月经周期记录
+@app.get("/api/cycle/{user_id}")
+def get_user_cycle_records_endpoint(user_id: int, db: Session = Depends(get_db)):
+    records = get_user_cycle_records(db, user_id)
+    return {
+        "success": True,
+        "records": records
+    }
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1")
