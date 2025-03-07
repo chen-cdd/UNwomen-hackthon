@@ -60,7 +60,7 @@
 
       <!-- 展示饮食方案 -->
       <div class="diet-plan-section" v-if="dietPlan">
-        <h2 class="plan-title">Your 5-Day Cycle-Synced Meal Plan</h2>
+        <h2 class="plan-title">Your 3-Day Cycle-Synced Meal Plan</h2>
         <div class="diet-plan-container">
           <div v-for="(day, index) in dietPlan.days" :key="index" class="day-plan">
             <div class="day-header">
@@ -179,63 +179,59 @@
         this.errorMessage = '';
         
         try {
-          // 尝试从API获取数据
-          const response = await fetch('/api/get-diet-plan', {
+          // 构造请求体
+          const requestBody = {
+            inputs: {
+              healthStatus: this.userInput.healthStatus,
+              dietPreferences: this.userInput.dietPreferences,
+              restrictions: this.userInput.restrictions
+            },
+            response_mode: "blocking",
+            user: localStorage.getItem('userId') || 'default-user'
+          };
+
+          // 发送请求到 Dify API
+          const response = await fetch('https://api.dify.ai/v1/workflows/run', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.userInput)
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer app-BtzpOwQINRryFDv5zK2n25xT'
+            },
+            body: JSON.stringify(requestBody)
           });
-          
+
           if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
+            throw new Error(`API request failed with status: ${response.status}`);
           }
+
+          const result = await response.json();
           
-          const data = await response.json();
-          this.dietPlan = data;
-          
-          // 滚动到饮食方案部分
-          this.$nextTick(() => {
-            document.querySelector('.diet-plan-section')?.scrollIntoView({ behavior: 'smooth' });
-          });
+          // 解析 API 返回的数据
+          if (result.data && result.data.outputs && result.data.outputs.text) {
+            try {
+              // 将返回的 JSON 字符串解析为对象
+              const dietPlanData = JSON.parse(result.data.outputs.text);
+              this.dietPlan = dietPlanData;
+              
+              // 滚动到饮食计划部分
+              this.$nextTick(() => {
+                document.querySelector('.diet-plan-section')?.scrollIntoView({ 
+                  behavior: 'smooth' 
+                });
+              });
+            } catch (parseError) {
+              console.error('Error parsing diet plan data:', parseError);
+              throw new Error('Invalid diet plan data format');
+            }
+          } else {
+            throw new Error('No diet plan data received');
+          }
         } catch (error) {
           console.error('Failed to get diet plan:', error);
-          
-          // 如果API调用失败，使用模拟数据
-          this.useMockData();
-          this.errorMessage = 'Using sample data as API is unavailable. In production, this would connect to our backend service.';
+          this.errorMessage = '获取饮食计划失败，请稍后重试';
         } finally {
           this.isLoading = false;
         }
-      },
-      
-      // 使用模拟数据方法
-      useMockData() {
-        // 基于用户输入创建个性化的模拟数据
-        const healthFocus = this.userInput.healthStatus ? 
-          `considering your ${this.userInput.healthStatus}` : 
-          'for optimal hormonal balance';
-          
-        const dietType = this.userInput.dietPreferences ? 
-          `${this.userInput.dietPreferences} options` : 
-          'balanced nutrition';
-          
-        const restrictions = this.userInput.restrictions ? 
-          `avoiding ${this.userInput.restrictions}` : 
-          '';
-        
-        this.dietPlan = {
-          days: [
-            {
-              meals: `Breakfast: Spinach and mushroom omelet with whole grain toast\nLunch: Quinoa bowl with roasted vegetables and chickpeas\nDinner: Grilled salmon with sweet potato and steamed broccoli\nSnacks: Greek yogurt with berries, handful of nuts\n\nFocus: Iron-rich foods ${healthFocus}, with ${dietType} ${restrictions}`
-            },
-            {
-              meals: `Breakfast: Overnight oats with chia seeds, almond milk and fresh fruits\nLunch: Mediterranean salad with olive oil dressing and grilled chicken\nDinner: Lentil soup with mixed vegetables and whole grain bread\nSnacks: Apple with almond butter, vegetable sticks with hummus\n\nFocus: Anti-inflammatory foods ${healthFocus}, with ${dietType} ${restrictions}`
-            },
-            {
-              meals: `Breakfast: Smoothie bowl with banana, berries, flax seeds and plant protein\nLunch: Buddha bowl with brown rice, avocado, roasted vegetables and tofu\nDinner: Baked white fish with quinoa and roasted Brussels sprouts\nSnacks: Dark chocolate (70%+), mixed nuts and seeds\n\nFocus: Hormone-balancing foods ${healthFocus}, with ${dietType} ${restrictions}`
-            }
-          ]
-        };
       }
     }
   }

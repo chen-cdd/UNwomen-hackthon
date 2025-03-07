@@ -278,40 +278,6 @@ export default {
       return `${month}/${day}/${year} ${hours}:${minutes}`;
     },
 
-    // async checkExistingAppointments() {
-    //   try {
-    //     const response = await axios.get(`${API_BASE_URL}/appointments/user/${this.userId}`);
-    //     if (response.data.success) {
-    //       // 筛选未来的预约，但不限制数量
-    //       const now = new Date();
-    //       this.userAppointments = response.data.data
-    //         .filter(appointment => new Date(appointment.appointment_date) > now)
-    //         .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
-          
-    //       // 显示最近的预约
-    //       if (this.userAppointments.length > 0) {
-    //         const latestAppointment = this.userAppointments[0];
-    //         this.hasAppointment = true;
-    //         this.nextAppointment = {
-    //           doctor: latestAppointment.doctor_name,
-    //           date: this.formatAppointmentDate(latestAppointment.appointment_date),
-    //           status: latestAppointment.status
-    //         };
-    //       } else {
-    //         this.hasAppointment = false;
-    //         this.nextAppointment = {
-    //           doctor: '',
-    //           date: '',
-    //           status: ''
-    //         };
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.error('Error checking appointments:', error);
-    //   }
-    // },
-
-    // 由于公司医生和私人医生的预约最终存储在同一个数据库中，且通过 GET /appointments/user/:userId 返回，我们需要确保 checkExistingAppointments 方法能够正确处理两类预约的差异。例如，私人医生的预约可能没有 doctor_id，而是用 doctor_name 表示医生。
     async checkExistingAppointments() {
       try {
         const response = await axios.get(`${API_BASE_URL}/appointments/user/${this.userId}`);
@@ -325,7 +291,7 @@ export default {
             const latestAppointment = this.userAppointments[0];
             this.hasAppointment = true;
             this.nextAppointment = {
-              id: latestAppointment.id, // 增加 ID 用于取消和修改
+              id: latestAppointment.appointment_id, // 增加 ID 用于取消和修改
               doctor: latestAppointment.doctor_name || 'Company Doctor', // 处理私人医生和公司医生
               date: this.formatAppointmentDate(latestAppointment.appointment_date),
               status: latestAppointment.status
@@ -487,13 +453,15 @@ export default {
     },
 
     async cancelAppointment(appointmentId) {
+    if (!appointmentId || isNaN(appointmentId)) {
+      alert('Invalid appointment ID. Please try again.');
+      return;
+    }
     if (!confirm('确定要取消这个预约吗？')) {
       return;
     }
-
     try {
       const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}`);
-
       if (response.data.success) {
         await this.checkExistingAppointments();
         alert('预约已成功取消');
@@ -505,6 +473,10 @@ export default {
   },
 
   async modifyAppointment(appointmentId) {
+    if (!appointmentId || isNaN(appointmentId)) {
+      alert('Invalid appointment ID. Please try again.');
+      return;
+    }
     const newDate = prompt('请输入新的预约日期 (YYYY-MM-DD):');
     const newTime = prompt('请输入新的预约时间 (HH:MM):');
 

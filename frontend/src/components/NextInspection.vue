@@ -5,21 +5,21 @@
       <div class="calendar-section">
 
         <!-- 新增用户输入区域 -->
-      <div class="past-periods-input">
-        <h2>Input Past Periods to Predict the Next Menstrual Period</h2>
-        <div v-for="(period, index) in pastPeriods" :key="index" class="period-entry">
-          <label>Start Date:</label>
-          <input type="date" v-model="period.start" />
-          <label>End Date:</label>
-          <input type="date" v-model="period.end" />
+        <div class="past-periods-input">
+          <h2>Input Past Periods to Predict the Next Menstrual Period</h2>
+          <div class="period-entry">
+            <label>Start Date:</label>
+            <input type="date" v-model="userInputPeriod.start" />
+            <label>End Date:</label>
+            <input type="date" v-model="userInputPeriod.end" />
+          </div>
+          <button class="add-btn" @click="saveCycleRecord">Save Period Record</button>
+          <button class="predict-btn" @click="predictNextPeriod">Predict Next Period</button>
         </div>
-        <button class="add-btn" @click="saveCycleRecord">Save Period Record</button>
-        <button class="predict-btn" @click="predictNextPeriod">Predict Next Period</button>
-      </div>
 
-       <!-- 添加历史记录显示区域 -->
+      <!-- 添加历史记录显示区域 -->
       <div class="cycle-history" v-if="cycleRecords.length > 0">
-        <h2>Period History</h2>
+        <h2 class="history-title">Period History</h2>
         <div class="history-list">
           <div v-for="record in cycleRecords" :key="record.record_id" class="history-item">
             <div class="history-dates">
@@ -29,7 +29,8 @@
               <span class="date-value">{{ formatDate(record.cycle_end_date) }}</span>
             </div>
             <div class="duration">
-              Duration: {{ calculateDuration(record.cycle_start_date, record.cycle_end_date) }} days
+              <span class="duration-label">Duration:</span>
+              <span class="duration-value">{{ calculateDuration(record.cycle_start_date, record.cycle_end_date) }} days</span>
             </div>
           </div>
         </div>
@@ -89,6 +90,8 @@
       return {
         nextAppointment: null, // 初始化为null，直到预测生成结果
         pastPeriods: [{ start: '', end: '' }], // 存储用户输入的经期数据
+        userInputPeriod: { start: '', end: '' }, // 修改为对象
+        
         showLeaveForm: false, // 控制请假表单的显示
         leaveRequest: {
           startDate: '',
@@ -144,44 +147,55 @@
      // 保存周期记录
      async saveCycleRecord() {
       try {
-        const currentPeriod = this.pastPeriods[this.pastPeriods.length - 1];
-        if (!currentPeriod.start || !currentPeriod.end) {
-          alert('请输入完整的开始和结束日期');
+        // 检查用户是否填写了完整的开始和结束日期
+        if (!this.userInputPeriod.start || !this.userInputPeriod.end) {
+          alert('Please enter both start and end dates.');
           return;
         }
 
+        // 发送保存请求
         const response = await fetch(`http://localhost:8000/api/cycle/add/${this.userId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            cycle_start_date: currentPeriod.start,
-            cycle_end_date: currentPeriod.end
-          })
+            cycle_start_date: this.userInputPeriod.start,
+            cycle_end_date: this.userInputPeriod.end,
+          }),
         });
 
         const data = await response.json();
         if (data.success) {
-          alert('记录保存成功！');
-          await this.loadCycleRecords(); // 重新加载记录
+          alert('Record saved successfully!');
+          this.userInputPeriod = { start: '', end: '' }; // 清空输入框
+          await this.loadCycleRecords(); // 重新加载周期记录
+        } else {
+          alert('Failed to save the record. Please try again.');
         }
       } catch (error) {
-        console.error('保存记录失败:', error);
-        alert('保存记录失败，请重试');
+        console.error('Error saving record:', error);
+        alert('An error occurred while saving the record. Please try again.');
       }
     },
 
     // 加载周期记录
     async loadCycleRecords() {
-      try {
-        const response = await fetch(`http://localhost:8000/api/cycle/${this.userId}`);
-        const data = await response.json();
-        if (data.success) {
-          this.cycleRecords = data.records;
-        }
-      } catch (error) {
-        console.error('加载记录失败:', error);
+    try {
+      const response = await fetch(`http://localhost:8000/api/cycle/${this.userId}`);
+      const data = await response.json();
+      if (data.success) {
+        // 按时间顺序从远到近排序
+        this.cycleRecords = data.records.sort((a, b) => new Date(a.cycle_start_date) - new Date(b.cycle_start_date));
+
+        // 将加载的周期记录格式化为 pastPeriods 数据
+        this.pastPeriods = this.cycleRecords.map(record => ({
+          start: record.cycle_start_date,
+          end: record.cycle_end_date
+        }));
       }
-    },
+    } catch (error) {
+      console.error('Failed to load record:', error);
+    }
+  },
 
     // 格式化日期
     formatDate(dateString) {
@@ -198,44 +212,95 @@
     },
 
     addPeriod() {
-      this.pastPeriods.push({ start: '', end: '' });
+      this.userInputPeriod = { start: '', end: '' }; // Reset input
     },
 
     async predictNextPeriod() {
-      try {
-        const response = await fetch('https://api.dify.ai/v1/workflows/run', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'app-1APBtuu59fEsBytqy6goivAh'
-          },
-          body: JSON.stringify({
-            inputs: {
-              periods: this.pastPeriods
-            },
-            response_mode: 'blocking',
-            user: this.userId || 'anonymous'
-          })
-        });
+  try {
+    // 构造动态输入数据
+    const periods = this.pastPeriods.map(period => ({
+      start_date: period.start,
+      end_date: period.end
+    }));
 
-        const data = await response.json();
-        if (data.data && data.data.outputs) {
-          const prediction = data.data.outputs;
-          this.nextAppointment = {
-            month: new Date(prediction.predicted_date).toLocaleString('default', { month: 'long' }),
-            day: new Date(prediction.predicted_date).getDate(),
-            phase: `Menstrual Phase (${prediction.confidence || '高'}置信度)`,
-            duration: `${prediction.duration || '5-7'} 天`,
-            cycleLength: `${prediction.cycle_length || '28'} 天`
-          };
-        } else {
-          throw new Error('预测结果格式不正确');
-        }
-      } catch (error) {
-        console.error('预测错误:', error);
-        alert('预测失败，请重试。');
+    // 检查是否有有效的经期记录
+    if (periods.some(p => !p.start_date || !p.end_date)) {
+      alert('Make sure all menstrual records have a start and end date!');
+      return;
+    }
+
+    // 将 periods 转换为字符串
+    const periodsString = periods
+      .map(p => `Start Date: ${p.start_date}, End Date: ${p.end_date}`)
+      .join('\n');
+
+    // 计算周期长度
+    const cycleData = [];
+    for (let i = 0; i < periods.length - 1; i++) {
+      const startDate1 = new Date(periods[i].start_date);
+      const startDate2 = new Date(periods[i + 1].start_date);
+
+      // 确保日期有效且顺序正确
+      if (!isNaN(startDate1) && !isNaN(startDate2) && startDate2 > startDate1) {
+        const cycleDays = Math.round((startDate2 - startDate1) / (1000 * 60 * 60 * 24));
+        cycleData.push(cycleDays);
+      } else {
+        console.warn(`Invalid or incorrectly sequenced dates: ${periods[i].start_date} 和 ${periods[i + 1].start_date}`);
       }
-    },
+    }
+
+    // 检查是否有有效的周期长度数据
+    if (cycleData.length === 0) {
+      alert('Please enter at least two complete and valid menstrual records to calculate cycle lengths');
+      return;
+    }
+
+    // 将 cycleData 转换为字符串
+    const cycleDataString = cycleData.map(days => `${days}天`).join(', ');
+
+    // 调用 Dify API
+    const response = await fetch('https://api.dify.ai/v1/workflows/run', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer app-1APBtuu59fEsBytqy6goivAh' // 替换为你的实际 Token
+      },
+      body: JSON.stringify({
+        inputs: {
+          periods: periodsString,
+          cycle_data: cycleDataString
+        },
+        response_mode: 'blocking',
+        user: 'userId'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Dify API Request Fall,State Code: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Dify API Return Data:', data);
+
+    if (data.data && data.data.outputs) {
+    // Parse the JSON string into an object
+    const prediction = JSON.parse(data.data.outputs.text);
+
+    this.nextAppointment = {
+      month: new Date(prediction.predicted_date).toLocaleString('en-US', { month: 'long' }),
+      day: new Date(prediction.predicted_date).getDate(),
+      phase: `Menstrual Phase (${prediction.confidence} confidence)`,
+      duration: `${prediction.duration} days`,
+      cycleLength: `${prediction.cycle_length} days`
+    };
+  } else {
+    throw new Error('The prediction result format is incorrect');
+  }
+  } catch (error) {
+    console.error('预测错误:', error);
+    alert('预测失败，请重试。错误信息: ' + error.message);
+  }
+},
 
     async requestLeave() {
         if (!this.leaveRequest.startDate) {
@@ -244,7 +309,7 @@
         }
         
         try {
-          // 这里可以添加与后端API的交互
+
           const response = await fetch('http://localhost:8000/api/request-leave', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -279,12 +344,85 @@
         }
       },
     }
-  
-};
+  };
+
 
   </script>
   
   <style scoped>
+
+.cycle-history {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 2px 8px rgba(213, 63, 140, 0.1);
+}
+
+.history-title {
+  color: #2d3748;
+  margin-bottom: 1rem;
+  padding-left: 0.8rem;
+  border-left: 3px solid #d53f8c;
+}
+
+.history-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.history-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.history-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.history-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.date-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.date-value {
+  color: #2d3748;
+  font-weight: 500;
+  margin-right: 1rem;
+}
+
+.duration {
+  text-align: right;
+  font-size: 0.9rem;
+  color: #d53f8c;
+}
+
+@media (max-width: 640px) {
+  .cycle-history {
+    padding: 1rem;
+  }
+  
+  .history-dates {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+  
+  .date-value {
+    margin-right: 0;
+  }
+}
 
 .past-periods-input {
   background: white;
